@@ -1,0 +1,40 @@
+services:
+  test_redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - test_network
+
+  test_worker:
+    build:
+      context: ./worker
+    container_name: worker
+    command:  ["sh", "-c", "celery -A main.celery_app worker --loglevel=info & pytest -v --maxfail=1"]
+    depends_on:
+      - test_redis
+    environment:
+    - PYTHONPATH=/worker
+    env_file:
+      - ./worker/.env
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - test_network
+  test_parser:
+    build:
+      context: ./parser
+    container_name: parser
+    depends_on:
+      - test_redis
+    environment:
+    - PYTHONPATH=/parser
+    env_file:
+    - ./parser/.env
+    command: ["sh", "-c", "sleep 10 && pytest -v --maxfail=1"]
+    networks:
+      - test_network
+
+networks:
+  test_network:
+    driver: bridge

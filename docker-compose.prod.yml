@@ -1,0 +1,36 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - worker_network
+
+  worker:
+    build:
+      context: ./worker
+    container_name: worker
+    command: ["celery", "-A", "main.celery_app", "worker", "--loglevel=info", "-Q", "urls_queue"]
+    depends_on:
+      - redis
+    env_file:
+      - ./worker/.env
+    networks:
+      - worker_network
+
+  parser:
+    build:
+      context: ./parser
+    container_name: parser
+    depends_on:
+      - redis
+      - worker
+    env_file:
+      - ./parser/.env
+    networks:
+      - worker_network
+
+networks:
+  worker_network:
+    driver: bridge
